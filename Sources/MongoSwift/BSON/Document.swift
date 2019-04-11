@@ -296,7 +296,7 @@ extension Document {
      * - Returns: the parsed `Document`
      */
     public init(fromJSON: Data) throws {
-        self.storage = DocumentStorage(fromPointer: try fromJSON.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
+        let bson: UnsafeMutablePointer<bson_t> = try fromJSON.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
             var error = bson_error_t()
             guard let bson = bson_new_from_json(bytes, fromJSON.count, &error) else {
                 throw MongoError.bsonParseError(
@@ -305,9 +305,11 @@ extension Document {
                     message: toErrorString(error)
                 )
             }
+            return bson
+        }
+        defer { bson_destroy(bson) }
 
-            return UnsafePointer(bson)
-        })
+        self.storage = DocumentStorage(fromPointer: UnsafePointer(bson))
         self.count = self.storage.count
     }
 
@@ -320,9 +322,12 @@ extension Document {
 
     /// Constructs a `Document` from raw BSON `Data`.
     public init(fromBSON: Data) {
-        self.storage = DocumentStorage(fromPointer: fromBSON.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
+        let data = fromBSON.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) in
             bson_new_from_data(bytes, fromBSON.count)
-        })
+        }
+        defer { bson_destroy(data) }
+
+        self.storage = DocumentStorage(fromPointer: data!)
         self.count = self.storage.count
     }
 
@@ -422,6 +427,7 @@ extension Document: BSONValue {
         guard let docData = bson_new_from_data(document.pointee, Int(length)) else {
             throw MongoError.bsonDecodeError(message: "Failed to create a bson_t from document data")
         }
+        defer { bson_destroy(docData) }
 
         return self.init(fromPointer: docData)
     }

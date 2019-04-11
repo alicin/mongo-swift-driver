@@ -89,6 +89,7 @@ extension Array: BSONValue {
         guard let arrayData = bson_new_from_data(array.pointee, Int(length)) else {
             throw MongoError.bsonDecodeError(message: "Failed to create a bson_t from array data")
         }
+        defer { bson_destroy(arrayData) }
 
         let arrDoc = Document(fromPointer: arrayData)
 
@@ -512,8 +513,9 @@ public struct CodeWithScope: BSONValue, Equatable, Codable {
         guard let scopeData = bson_new_from_data(scopePointer.pointee, Int(scopeLength)) else {
             throw MongoError.bsonDecodeError(message: "Failed to create a bson_t from scope data")
         }
-        let scopeDoc = Document(fromPointer: scopeData)
+        defer { bson_destroy(scopeData) }
 
+        let scopeDoc = Document(fromPointer: scopeData)
         return self.init(code: code, scope: scopeDoc)
     }
 
