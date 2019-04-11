@@ -326,7 +326,7 @@ extension Document {
             bson_new_from_data(bytes, fromBSON.count)
         }
         defer { bson_destroy(data) }
-
+        // swiftlint:disable:next force_unwrapping
         self.storage = DocumentStorage(fromPointer: data!)
         self.count = self.storage.count
     }
